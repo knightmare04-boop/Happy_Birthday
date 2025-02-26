@@ -147,53 +147,128 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(checkMeeting, 100); // Check for meeting every 100ms
 
     // Birthday Countdown
-    const countdownDate = new Date("February 27, 2025 00:00:00").getTime();
+const countdownDate = new Date("February 27, 2025 00:00:00").getTime();
+const countdownElement = document.getElementById("countdown-timer");
 
-    function updateCountdown() {
-        const now = new Date().getTime();
-        const distance = countdownDate - now;
+function updateCountdown() {
+    const now = new Date().getTime();
+    const distance = countdownDate - now;
 
+    if (distance < 0) {
+        clearInterval(countdownTimer);
+        showBirthdayMessage();
+    } else {
         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        document.getElementById("days").innerHTML = days.toString().padStart(2, '0');
-        document.getElementById("hours").innerHTML = hours.toString().padStart(2, '0');
-        document.getElementById("minutes").innerHTML = minutes.toString().padStart(2, '0');
-        document.getElementById("seconds").innerHTML = seconds.toString().padStart(2, '0');
+        countdownElement.innerHTML = `
+            <div><span id="days">${days.toString().padStart(2, '0')}</span><p>Days</p></div>
+            <div><span id="hours">${hours.toString().padStart(2, '0')}</span><p>Hours</p></div>
+            <div><span id="minutes">${minutes.toString().padStart(2, '0')}</span><p>Minutes</p></div>
+            <div><span id="seconds">${seconds.toString().padStart(2, '0')}</span><p>Seconds</p></div>
+        `;
+    }
+}
 
-        if (distance < 0) {
-            clearInterval(countdownTimer);
-            document.getElementById("countdown-timer").innerHTML = "Happy Birthday!";
+function showBirthdayMessage() {
+    countdownElement.innerHTML = `<h1 class="birthday-message">Happy Birthday!</h1>`;
+    triggerMassiveConfetti();
+}
+
+function triggerMassiveConfetti() {
+    const duration = 15 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+    function randomInRange(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    const interval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+            return clearInterval(interval);
         }
-    }
 
+        const particleCount = 50 * (timeLeft / duration);
+
+        confetti(Object.assign({}, defaults, { 
+            particleCount, 
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } 
+        }));
+        confetti(Object.assign({}, defaults, { 
+            particleCount, 
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } 
+        }));
+    }, 250);
+}
+
+// Check if it's already past the birthday
+if (new Date().getTime() > countdownDate) {
+    showBirthdayMessage();
+} else {
     const countdownTimer = setInterval(updateCountdown, 1000);
-    updateCountdown();
+    updateCountdown(); // Initial call to avoid delay
+}
 
-    // Wish Jar
-    const wishForm = document.getElementById('wishForm');
-    const wishJar = document.getElementById('wishJar');
 
-    wishForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const name = document.getElementById('name').value;
-        const wish = document.getElementById('wish').value;
-        addWish(name, wish);
-        wishForm.reset();
+// Wish Jar
+const wishForm = document.getElementById('wishForm');
+const wishJar = document.getElementById('wishJar');
+
+wishForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('name').value;
+    const wish = document.getElementById('wish').value;
+    addWish(name, wish);
+    wishForm.reset();
+});
+
+function addWish(name, wish) {
+    fetch('add_wish.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, wish }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Wish added successfully');
+        displayWish(name, wish);
+    })
+    .catch((error) => {
+        console.error('Error:', error);
     });
+}
 
-    function addWish(name, wish) {
-        const wishElement = document.createElement('div');
-        wishElement.className = 'wish';
-        wishElement.innerHTML = `<strong>${name}:</strong> ${wish}`;
-        wishJar.appendChild(wishElement);
-        
-        // Animate the wish
-        wishElement.style.animation = `float ${5 + Math.random() * 5}s ease-in-out infinite`;
-        wishElement.style.left = `${Math.random() * 80}%`;
-    }
+function displayWish(name, wish) {
+    const wishElement = document.createElement('div');
+    wishElement.className = 'wish';
+    wishElement.innerHTML = `<strong>${name}:</strong> ${wish}`;
+    wishJar.appendChild(wishElement);
+    
+    // Animate the wish
+    wishElement.style.animation = `float ${5 + Math.random() * 5}s ease-in-out infinite`;
+    wishElement.style.left = `${Math.random() * 80}%`;
+}
+
+// Load wishes when the page opens
+function loadWishes() {
+    fetch('get_wishes.php')
+    .then(response => response.json())
+    .then(wishes => {
+        wishes.forEach(wish => displayWish(wish.name, wish.wish));
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+    });
+}
+
+loadWishes();
 
     // Game
     const canvas = document.getElementById('gameCanvas');
